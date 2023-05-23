@@ -1,0 +1,628 @@
+---
+title: "Hackathon"
+author: "Sushant Mahadik"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+\textcolor{red}{Problem Statement:}
+US is one of the countries which confers the right to keep arms and is constitutionally protected. As a result of this, the severity of gun violence in US is very high as compared to other developed countries. The number of lives lost due to gun violence in US is increasing year by year and hence is a matter of grave concern. This was one of the many reasons why we decided to select the topic and dive deep into the analysis and try to answer the below questions. This Hackathon project attempts to bring in light the threat guns possess. The aim of the project is to answer the following Questions:
+
+Q1. Are the Incidents Decreasing with every passing year?\
+Q2. Which are the months of most violence?\
+Q3. Which is the most incident prone day of the week?\
+Q4. Is the trend of incidents across months same every year?\
+Q5. Do number of incidents occurred follow a pattern with no. of people killed and no. of people injured?\
+Q6. Do few states have a lot of violence and others have less violence or is violence evenly spread?\
+Q7. If the violence is not evenly spread then which States see the most incidents?\
+Q8. Which major Cities are unsafe to live in?\
+Q9. Where do most incidents occur?\
+Q10.What are the biggest Incidents\
+
+The data, Gun Violence Data was downloaded from https://www.kaggle.com/datasets/jameslko/gun-violence-data.
+This data has 29 columns:
+
+Incident Id - Unique ID to each incident\
+date - Date of incident occurence\
+State - State where incident happened\
+City or Country - Country or city where incident took place\
+Address - Location of crime\
+n_killed - Number of people killed\
+n_injured - Number of people injured\
+incident_url - URL Describing the incident\
+source_url - Same as incident_url (‘dataset description doesnt provide much info.Therefore we assume’)\
+incident_url_fields_missing- Logical indicating whether incident URL is present or not (‘dataset description doesnt provide much info.Therefore we assume’)\
+congressional_district - District number (assume)\
+gun_stolen- Status indicating whether the person had his/her gun stolen.\
+gun_type - Type of gun\
+incident_characteristics - Description of incident.\
+latitute- Latitude of the area where crime happened.\
+location_description - Place where incident took place.\
+longitute - Longitude of the area where crime happened.\
+n_guns_involved - Total guns involved in crime\
+notes - Comments\
+participant_age - Age of people involved\
+participant_age_group - Age bracket of the people involved\
+participant_gender- Gender of involved people\
+participant_name - Name of the involved people\
+Participant_relationship - Relationship of the group\
+participant_status - status of the people - either arrested,injured or killed in the incident\
+participant_type - Either he is a victim or suspect\
+sources - Source of the incident information\
+state_house_district - state house district Number\
+state_senate_district - State senate district number\
+
+\textcolor{red}{1. Incident per year}\
+We can see from the graph below that there are more gun violence events every year. There were approximately 51,000 reported events in 2014, The number rose to 53 000 the next year, 2016 witnessed an even higher increase with close to 58 000 instances reported, and in 2017, the number of gun violence incidents rose even more to 61 000. 10,000 more occurrences were reported between 2014 and 2017.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center",include=FALSE}
+#install.packages("webshot")
+#webshot::install_phantomjs()
+library(knitr)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(stringr)
+library(gridExtra)
+library(brew)
+library(lubridate)
+library(plotly)
+library(tidyverse)
+#install.packages("maps")
+library(maps)
+#install.packages("leaflet")
+library(leaflet)
+library(magrittr)
+library(knitr)
+#install.packages("splitstackshape")
+library(splitstackshape)
+```
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun <- mutate(df_gun, year = as.factor(year(df_gun$date)),month = month(df_gun$date,label = TRUE, abbr = TRUE))
+
+df_incident_ct1 <- df_gun %>% 
+  group_by(year,month) %>% 
+  summarise(count=n()) %>% 
+  ungroup
+kable(df_incident_ct1)
+
+
+plot_time <- ggplot(df_incident_ct1, aes(x=month, y=count,group=year,color=year)) +
+  geom_line() + 
+  geom_point() +
+  scale_color_brewer(palette = "YlOrRd") +
+  labs(title="Gun Violence Incidents by State",x="Months" ,y="Total Count", color = "Year" )+
+  theme_minimal()
+ggplotly(plot_time)
+
+```
+
+\textcolor{red}{2. Average Incident per month}\
+The average number of gun violence occurrences is greater in the months of July and August compared to all other months. Every year, there are roughly 5200 events reported in these two months. The smallest number of incidents—about 3700 annually—occur in February. We'll try to investigate whether there is a certain day on which the number of gun violence events is always higher in the parts that follow.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun$month <- month(df_gun$date, label=TRUE)
+
+plotly::ggplotly(df_gun %>%  count(month) %>%
+        ggplot(aes(x=month, y=n)) + geom_bar(stat='identity', fill='darkorange') +
+          coord_flip()+
+        labs(x='Month', y='No. of incidents', title='Number of Incidents by Month'))
+
+  #+theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
+  
+```
+
+
+\textcolor{red}{3. Top 10 Worst Incidents:}\
+To view the information, please hover over the graph. With 470 victims, Las Vegas recorded the highest number of victims in the largest US incident for this specific dataset. The catastrophe in Orlando, which claimed over 100 victims, supports it. The majority of significant occurrences have been happening in the southern region of the US, which is an odd tendency.\
+
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+
+
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun$victims <- df_gun$n_killed + df_gun$n_injured
+
+
+df_top10 <- df_gun %>% select(incident_id, date, n_killed, n_injured, victims, location_description, city_or_county, state, latitude, longitude) %>% rename(Incident_Id=incident_id, Date=date, Killed=n_killed, Injured=n_injured, Victims=victims, Location=location_description, City=city_or_county) %>%
+  arrange(desc(Victims)) %>% top_n(n=10, wt=Victims)
+
+kable(df_top10 %>% select(-longitude, -latitude))
+
+
+TopMap <- df_top10 %>% select(latitude, longitude, Victims, City, Location)
+
+labels <- paste0("<strong>City: </strong>", TopMap$City, 
+                 "<br><strong>Location: </strong>", TopMap$Location,
+                 "<br><strong>Victims </strong>", TopMap$Victims) %>% lapply(htmltools::HTML)
+
+leaflet(TopMap) %>%
+  setView(lng=-96, lat=37.8, zoom=4) %>%
+  addTiles() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addCircleMarkers(~longitude, ~latitude, color = "red", radius=~sqrt(Victims), label = labels)
+```
+
+\textcolor{red}{3. Incident per weekday}\
+Saturday and Sunday are the most dangerous days of the week. The best assumption is that this is caused by the fact that most individuals don't have to work on these days, as well as very likely by violence associated with the nightlife. Violence that occurs on a Friday night will almost certainly occur after midnight and will consequently be reported as an incident on Saturdays.\
+
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+df_gun$weekday <- wday(df_gun$date, label=TRUE)
+
+df_gun %>% count(weekday) %>%
+        ggplot(aes(x=weekday, y=n)) + geom_bar(stat='identity', fill='red') +
+        labs(x='Day of Week', y='Number of Incidents', title='NUMBER OF INCIDENTS BY WEEKDAY') + 
+        theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
+```
+
+
+
+\textcolor{red}{4. incident by month every year}\
+The number of events seems to be lower in Q1 and Q4 than in Q2 and Q3, suggesting some form of "seasonality." The second graph demonstrates that there were fewer events in Q1 2018 than Q1 2017. This can be interpreted as a cautiously encouraging indicator. One should be aware, nevertheless, that this number is still quite high when compared to other nations (relatively).\
+
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+df_gun$quarter <- quarter(df_gun$date)
+
+quarter1 <- df_gun %>% filter(year!=2013 & quarter==1) %>% select(year, quarter) %>%
+        group_by(year) %>% count(quarter) %>%
+        ggplot(aes(x=as.factor(year), y=n)) + geom_bar(stat='identity', fill='darkred') +
+        labs(x='Incidents in Q1 of each year', y='Number of incidents')+ coord_flip()+ theme_minimal()
+quarter2 <- df_gun %>% filter(year!=2013 & quarter==2) %>% select(year, quarter) %>%
+        group_by(year) %>% count(quarter) %>%
+        ggplot(aes(x=as.factor(year), y=n)) + geom_bar(stat='identity', fill='darkred') +
+        labs(x='Incidents in Q2 of each year', y='Number of incidents')+ coord_flip()+ theme_minimal()
+quarter3 <- df_gun %>% filter(year!=2013 & quarter==3) %>% select(year, quarter) %>%
+        group_by(year) %>% count(quarter) %>%
+        ggplot(aes(x=as.factor(year), y=n)) + geom_bar(stat='identity', fill='darkred') +
+        labs(x='Incidents in Q3 of each year', y='Number of incidents')+ coord_flip()+ theme_minimal()
+quarter4 <- df_gun %>% filter(year!=2013 & quarter==4) %>% select(year, quarter) %>%
+        group_by(year) %>% count(quarter) %>%
+        ggplot(aes(x=as.factor(year), y=n)) + geom_bar(stat='identity', fill='darkred') +
+        labs(x='Incidents in Q4 of each year', y='Number of incidents')+ coord_flip()+ theme_minimal()
+
+
+grid.arrange(quarter1, quarter2, quarter3, quarter4)
+```
+
+
+\textcolor{red}{5: Incidents, killed, injured every year}\
+From 2014 to 2017, the graphs above show that the largest peaks occur between July 4 and July 5. This is particularly intriguing considering that America celebrates Independence Day on July 4. According to this statistics, the periods between July 4 and July 5 appear to be the most dangerous because they are associated with a high number of gun violence occurrences. The holiday may possibly have a role in the high number of recorded cases of gun violence.
+July 4th, 2014 : Total Incidents : 192, Total Injuries : 92, Total Killed : 48
+
+July 4th, 2015 : Total Incidents : 211, Total Injuries : 142, Total Killed : 60
+
+July 4th, 2016 : Total Incidents : 224, Total Injuries : 163, Total Killed : 52
+
+July 4th, 2017 : Total Incidents : 248, Total Injuries : 146, Total Killed : 62
+
+A similar trend is observed for July 5th, which is the next day of Independence Day.
+
+5th July, 2014 - 212 Incidents
+
+5th July, 2015 - 211 Incidents
+
+5th July, 2016 - 224 Incidents
+
+5th July, 2017 - 248 Incidents
+
+Stats on other holidays after noticing similar tendency on a significant US holiday. After looking at the major US holidays, such as Christmas, Thanksgiving, Labor Day, and Memorial Day, one can find that the incidence of gun violence is also much higher during these times.\
+
+```{r, fig.height = 12, fig.width = 12, fig.align = "center", echo=FALSE, warning=FALSE, message= FALSE}
+
+library(tidyverse)
+library(lubridate)
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun = df_gun %>% 
+  select(incident_id, date, n_killed, n_injured, year)
+
+# 2014
+df_gun_14 = df_gun %>% 
+  filter(year == 2014) %>% 
+  #mutate(mnt = as.numeric(as.character(month(date)))   ) %>% 
+  select(incident_id, date, n_killed, n_injured) %>% 
+  group_by(date) %>% 
+  summarise(total_killed = sum(n_killed),
+           total_injured = sum(n_injured),
+           total_incidents = n()) %>% 
+  pivot_longer(cols = c('total_killed', 'total_injured', 'total_incidents'), names_to = 'Loss_type', values_to = 'loss') %>% 
+  ggplot( aes(x = date, y = loss,  color = Loss_type))+
+  geom_line()+
+  labs(title = "Type of Losses in 2014")+
+  theme_minimal()+
+  theme( 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_color_brewer(palette="YlOrRd", direction = -1)+
+  labs(color = "Type of Loss")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("Months")+
+  ylab("Count")
+
+# 2015
+df_gun_15 = df_gun %>% 
+  filter(year == 2015) %>% 
+  #mutate(mnt = as.numeric(as.character(month(date)))   ) %>% 
+  select(incident_id, date, n_killed, n_injured) %>% 
+  group_by(date) %>% 
+  summarise(total_killed = sum(n_killed),
+           total_injured = sum(n_injured),
+           total_incidents = n()) %>% 
+  pivot_longer(cols = c('total_killed', 'total_injured', 'total_incidents'), names_to = 'Loss_type', values_to = 'loss') %>% 
+  ggplot( aes(x = date, y = loss,  color = Loss_type))+
+  geom_line()+
+  labs(title = "Type of Losses in 2015")+
+  theme_minimal()+
+  theme( 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_color_brewer(palette="YlOrRd", direction = -1)+
+  labs(color = "Type of Loss")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("Months")+
+  ylab("Count")
+
+# 2016
+df_gun_16 = df_gun %>% 
+  filter(year == 2016) %>% 
+  #mutate(mnt = as.numeric(as.character(month(date)))   ) %>% 
+  select(incident_id, date, n_killed, n_injured) %>% 
+  group_by(date) %>% 
+  summarise(total_killed = sum(n_killed),
+           total_injured = sum(n_injured),
+           total_incidents = n()) %>% 
+  pivot_longer(cols = c('total_killed', 'total_injured', 'total_incidents'), names_to = 'Loss_type', values_to = 'loss') %>% 
+  ggplot( aes(x = date, y = loss,  color = Loss_type))+
+  geom_line()+
+  labs(title = "Type of Losses in 2016")+
+  theme_minimal()+
+  theme( 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_color_brewer(palette="YlOrRd", direction = -1)+
+  labs(color = "Type of Loss")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("Months")+
+  ylab("Count")
+
+# 2017
+df_gun_17 = df_gun %>% 
+  filter(year == 2017) %>% 
+  #mutate(mnt = as.numeric(as.character(month(date)))   ) %>% 
+  select(incident_id, date, n_killed, n_injured) %>% 
+  group_by(date) %>% 
+  summarise(total_killed = sum(n_killed),
+           total_injured = sum(n_injured),
+           total_incidents = n()) %>% 
+  pivot_longer(cols = c('total_killed', 'total_injured', 'total_incidents'), names_to = 'Loss_type', values_to = 'loss') %>% 
+  ggplot( aes(x = date, y = loss,  color = Loss_type))+
+  geom_line()+
+  labs(title = "Type of Losses in 2017")+
+  theme_minimal()+
+  theme( 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_color_brewer(palette="YlOrRd", direction = -1)+
+  labs(color = "Type of Loss")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("Months")+
+  ylab("Count")
+
+grid.arrange(df_gun_14, df_gun_15, df_gun_16, df_gun_17, nrow = 4)
+
+
+```
+
+\textcolor{red}{6. Incident per State(map)}\
+According to the map shown above, Illinois has had 17,000 gun violence events documented in the last five years, which is the most of any state. It is followed by Texas with 13,000 gun violence occurrences, Florida with 15,000 incidents, and California with over 16 000 reported incidences each. I've looked at the states with the most gun violence incidences per 100,000 people in the part after this.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+#install.packages("maps")
+library(maps)
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+map <- map_data("state")
+
+df_incident_ct_3 <- df_gun %>%
+  group_by(state) %>%
+  select(incident_id,state, latitude, longitude) %>% 
+  summarise(freq_count = n())
+
+df_incident_ct_3$state <- tolower(df_incident_ct_3$state)
+
+l <- ggplot(df_incident_ct_3, aes(fill = freq_count))
+s = l + geom_map(aes(map_id = state), map = map) +
+  expand_limits(x = map$long, y = map$lat)+
+  #scale_fill_continuous(low = "yellow", high = "red", name = "Incident Count", label = scales::comma) +
+  labs(title="Gun Violence Incidents by State") + 
+  theme_minimal() + 
+  theme(axis.text.x=element_blank(), 
+        axis.text.y=element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks.x=element_blank())+
+  scale_fill_distiller(palette="YlOrRd", direction = 1)+
+  labs(fill = "No. of Gun Voilence")+
+  xlab("")+
+  ylab("")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
+
+ggplotly(s)
+```
+
+\textcolor{red}{7. Incident per 100,000 people by State}\
+According to a population-adjusted dataset, Alaska has the most gun violence events per 100,000 residents, or about 183, while Arizona, Utah, and Idaho have the fewest. It's interesting to note that California, one of the states with the highest rate of gun violence occurrences, has a very low rate of incidences per 100,000 people. Illinois continues to be in the top 5 states for gun violence events.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+library(tidyverse)
+library(lubridate)
+
+df_state = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\State.csv', na = c('-',''))
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+
+df_gun$year <- year(df_gun$date)
+
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun = df_gun %>% 
+  mutate(state = str_trim(tolower(state)))
+
+df_state = df_state %>% 
+  mutate(state = str_trim(tolower(state)))
+
+# Incident per 100k ppl by State
+df_gun_state <- df_gun %>% 
+  select(state, incident_id) %>% 
+  group_by(state) %>% 
+  summarise(incident_count = n()) 
+
+df_gun_join_state =  left_join(df_gun_state, df_state, by='state')
+df_gun_join_state = df_gun_join_state %>% 
+  mutate(inc_per_100k = incident_count*100000/Population) %>% 
+  arrange(desc(inc_per_100k))
+
+## Since District of Columbia is not a State it is been dropped
+df_gun_join_state = df_gun_join_state[-c(1),] %>% 
+  select(state, inc_per_100k) %>% 
+  filter(inc_per_100k>50)
+
+#ggplot
+a = ggplot(df_gun_join_state, aes(x = reorder(state, -inc_per_100k), y = inc_per_100k, fill = inc_per_100k))+
+  geom_bar(stat = 'identity')+
+  labs(title = "Incidents per 100k population per State")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust=1), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_fill_distiller(palette="YlOrRd", direction = 1)+
+  labs(fill = "No. of Incidents")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("States")+
+  ylab("Incidents")
+  
+ggplotly(a)
+```
+
+
+\textcolor{red}{8. Incident per 100,000 people by City}\
+In contrast to Chicago, where the total number of gun violence occurrences was greatest, Baltimore (a city in Maryland) has the highest ratio of gun violence episodes to the city's population. Baltimore had a total of 3943 gun violence events in 2017, and there were 614,664 people living there. Although Chicago is one of the most populous cities in the US (2017 population = 2704958), its ratio of gun violence occurrences to population ranks fourth after Baltimore, Washington, and Milwaukee. Chicago has more than 10,000 gun violence episodes in recent years.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+
+df_city = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\City.csv', na = c('-',''))
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_city = df_city %>% 
+  separate(col = city, into = c("city", "state"), sep = ",") %>% 
+  select(city, population) %>% 
+  mutate(city = str_trim(tolower(city)))
+
+df_gun = df_gun %>% 
+  mutate(city = str_trim(tolower(city_or_county))) %>% 
+  select(city, incident_id)
+
+df_gun_city = df_gun %>% 
+  group_by(city) %>% 
+  summarise(incident_count = n())
+
+df_gun_joined_city = df_gun_city %>% 
+  left_join(df_city, by = 'city')
+
+df_gun_joined_city = df_gun_joined_city %>% 
+  drop_na() %>% 
+  mutate(inc_per_100k = incident_count*100000/population) %>% 
+  select(city, inc_per_100k) %>% 
+  filter(inc_per_100k>200) %>% 
+  arrange(desc(inc_per_100k))
+
+b = ggplot(df_gun_joined_city, aes(x = reorder(city, inc_per_100k), y = inc_per_100k, fill = inc_per_100k))+
+  geom_bar(stat = 'identity')+
+  labs(title = "Incidents per 100k population per City")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust=1), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  scale_fill_distiller(palette="YlOrRd", direction = 1)+
+  labs(fill = "No. of Incidents")+
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))+
+  xlab("Cities")+
+  ylab("Incidents")+
+  coord_flip()
+  
+ggplotly(b)
+
+```
+
+\textcolor{red}{9. Popular Incident Location(word cloud)}\
+The word cloud above shows that the majority of gun violence reports are from high schools, apartments, parks, gas stations, Walmart, motels, bars, and clubs, among other places.\
+```{r, echo=FALSE, warning=FALSE, fig.height = 5, fig.width = 10, fig.align = "center", message= FALSE}
+library(tidyverse)
+library(lubridate)
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+
+df_gun$year <- year(df_gun$date)
+
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+
+df_gun_word_cloud = df_gun %>% 
+  select(location_description) %>% 
+  drop_na()
+
+#install.packages("wordcloud")
+#install.packages("tm")
+library(tm)
+library(wordcloud)
+
+corpus = Corpus(VectorSource(df_gun_word_cloud$location_description))
+
+corpus = corpus %>% 
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removeNumbers) %>% 
+  tm_map(removePunctuation) %>% 
+  tm_map(removeWords, stopwords("english")) %>% 
+  tm_map(stripWhitespace)
+
+tdm = TermDocumentMatrix(corpus)
+m = as.matrix(tdm)
+v = sort(rowSums(m), decreasing = TRUE)
+d = data.frame(word = names(v), freq = v)
+
+wordcloud(d$word, d$freq, random.order = FALSE, rot.per=0.4, scale=c(5, .5), max.words = 70, colors = brewer.pal(10, "Dark2"))
+```
+
+\textcolor{red}{10: Top 10 Incident Characteristics by Year}\
+
+```{r echo=FALSE, fig.height=12, fig.width=12, warning=FALSE, message= FALSE}
+##Top 10 Incident Characteristics by Year
+
+df_gun = read_csv('D:\Northeastern University\Courses\Fall 2022\CompViz\Hackathon\IE6600_Sec05_Group01_Hackathon\gun-violence-data_01-2013_03-2018.csv', na = c('-',''))
+
+
+df_gun$year <- year(df_gun$date)
+df_gun = df_gun %>% 
+  filter(year > 2013) %>% 
+  filter(year < 2018)
+df_gun$incident_characteristics <- gsub("\\|\\|", "|", df_gun$incident_characteristics)
+
+df_inc_char <- splitstackshape::cSplit(df_gun %>% select(incident_id, year,state, city_or_county, incident_characteristics), 'incident_characteristics', sep =  '|', direction="long")
+
+incident_ct <- df_inc_char %>% 
+  group_by(incident_characteristics) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% top_n(n=10)
+
+df_inc_char_ct <- df_inc_char %>%
+  group_by(incident_characteristics,year) %>%
+  #group_by(year) %>% 
+  select(year,incident_characteristics) %>% 
+  summarise(count=n())
+  
+df_inc_char_ct <- filter(df_inc_char_ct, incident_characteristics %in%
+                             c("Shot - Wounded/Injured","Shot - Dead (murder, accidental, suicide)",
+                               "Non-Shooting Incident", "Shots Fired - No Injuries",
+                               "Possession (gun(s) found during commission of other crimes)",
+                               "Armed robbery with injury/death and/or evidence of DGU found",
+                               "Brandishing/flourishing/open carry/lost/found",
+                               "Officer Involved Incident","ATF/LE Confiscation/Raid/Arrest",
+                               "Drug involvement"))
+
+
+
+
+df_inc_char_ct_14 <- filter(df_inc_char_ct, year == '2014')
+
+
+##2014
+df_inc_char_ct_14 <- filter(df_inc_char_ct, year == '2014')
+plot_14 <- ggplot(df_inc_char_ct_14, aes(x = as.factor(incident_characteristics), y = count)) +
+  geom_bar(stat = "identity",fill=alpha("Red",1)) + ylim(0,11000) +
+  coord_polar(start = 0) +
+  labs(title="Top Incidents by Characteristics - 2014",x="Incident Characteristics" ,y="Total Count" )+ theme_minimal()
+#plot_14
+
+##2015
+
+df_inc_char_ct_15 <- filter(df_inc_char_ct, year == '2015')
+plot_15 <- ggplot(df_inc_char_ct_15, aes(x = as.factor(incident_characteristics), y = count)) +
+  geom_bar(stat = "identity",fill=alpha("Red",1)) + ylim(0,11000) +
+  coord_polar(start = 0) +
+  labs(title="Top Incidents by Characteristics - 2015",x="Incident Characteristics" ,y="Total Count" )+ theme_minimal()
+#plot_15
+
+##2016
+
+df_inc_char_ct_16 <- filter(df_inc_char_ct, year == '2016')
+plot_16 <- ggplot(df_inc_char_ct_16, aes(x = as.factor(incident_characteristics), y = count)) +
+  geom_bar(stat = "identity",fill=alpha("Red",1)) + ylim(0,11000) +
+  coord_polar(start = 0) +
+  labs(title="Top Incidents by Characteristics - 2016",x="Incident Characteristics" ,y="Total Count" )+ theme_minimal()
+#plot_16
+
+
+##2017
+
+df_inc_char_ct_17 <- filter(df_inc_char_ct, year == '2017')
+plot_17 <- ggplot(df_inc_char_ct_17, aes(x = as.factor(incident_characteristics), y = count)) +
+  geom_bar(stat = "identity",fill=alpha("Red",1)) + ylim(0,11000) +
+  coord_polar(start = 0) +
+  labs(title="Top Incidents by Characteristics - 2017",x="Incident Characteristics" ,y="Total Count" )+ theme_minimal()
+#plot_17
+
+grid.arrange(plot_14, plot_15, plot_16, plot_17, nrow = 2)
+```
+
+\textcolor{red}{Conclusion:}\
+Across our analysis, we saw that the number of gun violence incidents have been increasing year by year and each passing year has seen a drastic increase in the number of gun related violence. The months from April to August and the weekends see a rise in the number of gun related violence. One of the reasons may be because this is the period during which most of the people are out either due to vacations or meeting friends and families. Also, since the weather is not too harsh and severe the incidents during April to August are on a higher level as compared to during the winter months when the incidents are on a lower scale. From the perspective of states where the gun related violence occurs, the southern and the western states have the highest number of gun violence related incidents. From these data points we can make conclusions as to which cities and states are safe to live in and can be a great future scope to dive into the housing data analysis and extend the current analysis.\
+As a result, using this dataset, we examined several aspects of gun violence and used data analysis to glean some insightful information.
+
+
+
+
